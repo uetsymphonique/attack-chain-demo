@@ -16,7 +16,7 @@ This demo combine some repositories:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           ATTACK CHAIN OVERVIEW                              │
+│                           ATTACK CHAIN OVERVIEW                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 
 [1] Initial Access - React2Shell RCE (CVE-2025-55182)
